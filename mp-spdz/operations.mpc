@@ -1,0 +1,47 @@
+length = 1
+loop = 100
+
+import operator
+import functools
+
+a = Matrix(loop, length, sint)
+b = Matrix(loop, length, sint)
+for i in range(loop):
+  for j in range(length):
+    a[i][j] = sint.get_random_int(32)
+    b[i][j] = sint.get_random_int(32)
+c1 = [ sint(0) for _ in range(length) ]
+c2 = [ sint(0) for _ in range(length) ]
+c3 = sint(0)
+c4 = sint(0)
+
+c1 = Array.create_from(c1)
+c2 = Array.create_from(c2)
+c3 = MemValue(c3)
+c4 = MemValue(c4)
+res = Array(loop, cint)
+resv = MemValue(cint(0))
+
+start_timer(1)
+@for_range(loop)
+def _(l):
+  c1.assign(map(operator.add, a[l], b[l]))
+stop_timer(1)
+
+start_timer(2)
+@for_range(loop)
+def _(l):
+  c3.write(functools.reduce(operator.add, a[l]))
+stop_timer(2)
+
+start_timer(3)
+@for_range(loop)
+def _(l):
+  c2.assign(map(operator.mul, a[l], b[l]))
+stop_timer(3)
+
+start_timer(4)
+@for_range(loop)
+def _(l):
+  c4.write(functools.reduce(operator.mul, a[l]))
+stop_timer(4)

@@ -1,0 +1,65 @@
+import util
+
+program.bit_length = 32
+length = 16
+
+constant = [
+  cgf2n(0x61707865).bit_decompose(),
+  cgf2n(0x3320646e).bit_decompose(),
+  cgf2n(0x79622d32).bit_decompose(),
+  cgf2n(0x6b206574).bit_decompose()
+  ]
+key = [ sgf2n(0).bit_decompose() for _ in range(8) ]
+nonce = [ sgf2n(0).bit_decompose() for _ in range(2) ]
+inp = [ sgf2n(0).bit_decompose() for _ in range(length) ]
+bound = 2**32
+res = [ sgf2n(0) for _ in range(length) ]
+
+def rotl(x, n):
+  return x[n:] + x[:n]
+
+def xor(a, b):
+  return [ a0.bit_xor(b0) for a0, b0 in zip(a, b) ]
+
+def quarterround(buffer, a, b, c, d):
+  for rot1, rot2 in [[16, 20],[24, 25]]:
+    buffer[a] = sgf2nuint32.bit_adder(buffer[a], buffer[b])
+    buffer[d] = rotl(xor(buffer[d], buffer[a]), rot1)
+    buffer[c] = sgf2nuint32.bit_adder(buffer[c], buffer[d])
+    buffer[b] = rotl(xor(buffer[b], buffer[c]), rot2)
+
+def doubleround(buffer):
+  quarterround(buffer, 0, 4, 8, 12)
+  quarterround(buffer, 1, 5, 9, 13)
+  quarterround(buffer, 2, 6, 10, 14)
+  quarterround(buffer, 3, 7, 11, 15)
+  quarterround(buffer, 0, 5, 10, 15)
+  quarterround(buffer, 1, 6, 11, 12)
+  quarterround(buffer, 2, 7, 8, 13)
+  quarterround(buffer, 3, 4, 9, 14)
+
+def matrix(key, nonce, counter):
+  return [
+    constant[0], constant[1], constant[2], constant[3],
+    key[0], key[1], key[2], key[3],
+    key[4], key[5], key[6], key[7],
+    counter[0], counter[1], nonce[0], nonce[1]
+  ]
+
+def code(key, nonce, inp):
+  assert(len(key) == 8)
+  assert(len(nonce) == 2)
+  length = len(inp)
+  for b in range((length // 16) + (length % 16 != 0)):
+    size = min(16, length - (b * 16))
+    counter = [cgf2n(b >> 32).bit_decompose(), cgf2n(b % bound).bit_decompose()]
+    block = matrix(key, nonce, counter)
+    oblock = matrix(key, nonce, counter)
+    for _ in range(10):
+      doubleround(block)
+    for i in range(size):
+      block[i] = sgf2nuint32.bit_adder(block[i], oblock[i])
+      inp[(16 * b) + i] = xor(inp[(16 * b) + i], block[i])
+      res[(16 * b) + i] = sgf2n.bit_compose(inp[(16 * b) + i])
+
+code(key, nonce, inp)

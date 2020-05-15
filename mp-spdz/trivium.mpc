@@ -1,0 +1,49 @@
+blocks = 8
+
+def initialize(key, iv):
+  res = key +  [ cgf2n(0) for _ in range(13) ] + iv + [ cgf2n(0) for _ in range(112) ] + [ cgf2n(1) for _ in range(3) ]
+  for i in range(4 * 288):
+    t1 = res[65] + (res[90] * res[91]) + res[92] + res[170]
+    t2 = res[161] + (res[174] * res[175]) + res[176] + res[263]
+    t3 = res[242] + (res[285] * res[286]) + res[287] + res[68]
+    res = [t3] + res[:92] + [t1] + res[93:176] + [t2] + res[177:287]
+  return res
+
+def next(st):
+  t1 = st[65] + st[92]
+  t2 = st[161] + st[176]
+  t3 = st[242] + st[287]
+  res = t1 + t2 + t3
+  t1 = t1 + (st[90] * st[91]) + st[170]
+  t2 = t2 + (st[174] * st[175]) + st[263]
+  t3 = t3 + (st[285] * st[286]) + st[68]
+  st = [t3] + st[:92] + [t1] + st[93:176] + [t2] + st[177:287]
+  return st, res
+
+def keystreamblock(st):
+  res = Array(64, sgf2n)
+  st = st.get_range(0, 288)
+  for i in range(64):
+    st, res[i] = next(st)
+  return Array.create_from(st), res
+
+key = [ sgf2n.get_random_bit() for _ in range(80) ]
+iv = [ sgf2n.get_random_bit() for _ in range(80) ]
+tmp = Array.create_from([ sgf2n(0) for _ in range(blocks) ])
+res = Array.create_from([ cgf2n(0) for _ in range(blocks)])
+
+start_timer(1)
+st = Array.create_from(initialize(key, iv))
+stop_timer(1)
+
+start_timer(2)
+@for_range(blocks)
+def _(i):
+  st0, res = keystreamblock(st)
+  st.assign(st0)
+  tmp[i] = sgf2n.bit_compose(res)
+stop_timer(2)
+
+res = tmp.reveal()
+for i in range(blocks):
+  print_ln('%s', res[i])
